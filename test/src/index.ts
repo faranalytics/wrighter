@@ -4,6 +4,19 @@ import { ListenOptions } from 'node:net';
 
 import { create } from 'wrighter';
 
+let matchScheme = create((req: any, res: any, ctx: any, match: string) => {
+    
+    if (match == 'https') {
+        return Object.hasOwn(req.socket, 'encrypted')
+    }
+    else if (match == 'http') {
+        return !Object.hasOwn(req.socket, 'encrypted')
+    }
+    else {
+        throw new Error();
+    }
+});
+
 let matchHost = create((req: any, res: any, ctx: any, match: string) => {
 
     if (match.match(req.host)) {
@@ -25,24 +38,43 @@ let matchMethod = create((req: any, res: any, ctx: any, match: string) => {
     }
 });
 
-let resource = create((...args) => {
-    console.log(args);
-    return true;
+let matchPath = create((req: any, res: any, ctx: any, path: string) => {
+    console.log(path)
+    return req.path == path;
 });
 
+let root = create((req: any, res: any, ctx: any) => {
+    return true;
+})();
 
-let route = matchHost('localhost')(
+let paths = [
+    matchPath('/test1'),
+    matchPath('/test0'),
+    matchPath('/test3')
+]
 
-    matchMethod('GET')(
+let route = root(
 
-        resource
+    matchScheme('https')(
+
+        matchHost('localhost')(
+
+            matchMethod('GET')(
+
+                paths
+            )
+        )
     )
 );
 
 (async () => {
 
-    let result = await route({ host: 'localhost', method: 'GET' }, {}, {})
+    let result = await route({ host: 'localhost', method: 'GET', socket: { 'encrypted': null }, path: '/test0' }, {}, {})
+    console.log(result);
 
+    paths.unshift(matchPath('/test2'));
+
+    result = await route({ host: 'localhost', method: 'GET', socket: { 'encrypted': null }, path: '/test0' }, {}, {})
     console.log(result);
 })();
 

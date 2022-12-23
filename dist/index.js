@@ -3,11 +3,15 @@ const _wrapper = Symbol('wrapper');
 const _router = Symbol('router');
 export function create(handler) {
     function matcher(...matches) {
-        function wrapper(...routes) {
+        function wrapper(..._routes) {
             async function router(...args) {
                 let match = handler(...args, ...matches);
+                let routes = [..._routes];
                 if (match === true) {
                     for (let i = 0; i < routes.length; i++) {
+                        if (Array.isArray(routes[i])) {
+                            routes.splice(i, 1, ...routes[i]);
+                        }
                         if (routes[i].hasOwnProperty(_matcher)) {
                             routes[i] = routes[i]()();
                         }
