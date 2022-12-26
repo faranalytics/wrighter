@@ -116,8 +116,6 @@ let resource = createRoute<T, never>((
     });
 
     res.end(body);
-
-    return null;
 });
 
 let router = root(

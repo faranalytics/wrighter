@@ -3,13 +3,13 @@ const _connect = Symbol('connect');
 const _router = Symbol('router');
 
 
-export function createRoute<S extends Array<any>, T extends Array<any>,>(handler: (...args: [...S, ...T]) => boolean | undefined | null) {
+export function createRoute<S extends Array<any>, T extends Array<any>,>(handler: (...args: [...S, ...T]) => boolean | void | null) {
 
     function route(...routeArgs: T ): typeof connect {
 
         function connect(..._routes: Array<typeof route | typeof connect | typeof router | Array<typeof route | typeof connect | typeof router>>): typeof router {
 
-            async function router(...args: S): Promise<boolean | undefined | null> {
+            async function router(...args: S): Promise<boolean | void | null> {
 
                 let match = handler(...[...args, ...routeArgs]);
 
