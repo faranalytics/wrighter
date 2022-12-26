@@ -10,8 +10,7 @@ type S = [
     { [key: string]: any }
 ]
 
-
-let matchScheme = createRoute<[string], S>((
+let matchScheme = createRoute<S, [string]>((
     req: http.IncomingMessage,
     res: http.ServerResponse,
     ctx: { [key: string]: any },
@@ -19,45 +18,66 @@ let matchScheme = createRoute<[string], S>((
 ) => {
 
     if (match == 'https') {
+        ctx['scheme'] = 'https';
         return Object.hasOwn(req.socket, 'encrypted')
     }
     else if (match == 'http') {
+        ctx['scheme'] = 'http';
         return !Object.hasOwn(req.socket, 'encrypted')
     }
     else {
         throw new Error();
     }
-    return true;
+
+    return false;
 });
 
-// let matchHost = createRoute((req: any, res: any, ctx: any, match: string) => {
+let matchHost = createRoute<S, [RegExp]>((
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    ctx: { [key: string]: any },
+    match: RegExp) => {
 
-//     if (match.match(req.host)) {
-//         return true;
-//     }
-//     else {
-//         return false;
-//     }
-// });
+    if (req.url) {
+        let url = new URL(req.url, `${ctx['scheme']}://${req.headers.host}`);
+        ctx['url'] = url;
+        return match.test(url.hostname);
+    }
+    else {
+        return false;
+    }
+});
 
+let matchMethod = createRoute<S, [RegExp]>((
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    ctx: { [key: string]: any },
+    match: RegExp
+) => {
 
-// let matchMethod = createRoute((req: any, res: any, ctx: any, match: string) => {
+    if (req.method) {
+        return match.test(req.method);
+    }
+    else {
+        return false;
+    }
+});
 
-//     if (match.match(req.method)) {
-//         return true;
-//     }
-//     else {
-//         return false;
-//     }
-// });
+let matchPath = createRoute<S, [RegExp]>((
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    ctx: { [key: string]: any },
+    match: RegExp
+) => {
+    if (ctx?.url?.pathname) {
+        return match.test(ctx.url.pathname);
+    }
+    else {
+        return false;
+    }
+});
 
-// let matchPath = createRoute((req: any, res: any, ctx: any, path: string) => {
-//     console.log(path)
-//     return req.path == path;
-// });
-
-
-let root = createRoute<[any], S>((
+let root = createRoute<S, [any]>((
     req: http.IncomingMessage,
     res: http.ServerResponse,
     ctx: { [key: string]: any },
@@ -66,43 +86,61 @@ let root = createRoute<[any], S>((
     return true;
 })(null);
 
-// let paths = [
-//     matchPath('/test1'),
-//     matchPath('/test0'),
-//     matchPath('/test3')
-// ]
+let resource = createRoute<S, [any]>((
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    ctx: { [key: string]: any },
+    match: any
+) => {
 
-let route = root(
+    let body = 'TEST';
 
-    matchScheme('https')(
+    res.writeHead(200, {
+        'Content-Length': Buffer.byteLength(body),
+        'Content-Type': 'text/html'
+    });
 
-        //     matchHost('localhost')(
+    res.end(body);
 
-        //         matchMethod('GET')(
+    return true;
+});
 
-        //             paths
-        //         )
-        //     )
+let paths: Array<any> = [];
+
+paths.push(
+    matchPath(/\/page/)(
+        resource
+    )
+)
+
+let router = root(
+
+    matchScheme('http')(
+
+        matchHost(/^farar\.net$/)(
+
+            matchMethod(/GET/)(
+                paths
+            )
+        )
     )
 );
 
 (async () => {
 
-    let options: ListenOptions = {};
+    let options: ListenOptions = { port: 3000 };
 
     let server = new http.Server().listen(options);
 
     server.addListener('request', async (req: http.IncomingMessage, res: http.ServerResponse) => {
-        let result = await route(req, res, {})
 
+        try {
+            let result = await router(req, res, {})
+        }
+        catch(e){
+            console.error(e);
+        }
     });
-    
-    // console.log(result);
-
-    // paths.unshift(matchPath('/test2'));
-
-    // result = await route({ host: 'localhost', method: 'GET', socket: { 'encrypted': null }, path: '/test0' }, '', {})
-    // console.log(result);
 })();
 
 

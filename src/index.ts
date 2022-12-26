@@ -2,7 +2,8 @@ const _route = Symbol('matcher');
 const _wrapper = Symbol('wrapper');
 const _router = Symbol('router');
 
-export function createRoute<T extends Array<any>, S extends Array<any>>(handler: (...args: [...S, ...T]) => boolean) {
+
+export function createRoute<S extends Array<any>, T extends Array<any>,>(handler: (...args: [...S, ...T]) => boolean) {
 
     function route(...routeArgs: T ): typeof wrapper {
 
@@ -27,7 +28,7 @@ export function createRoute<T extends Array<any>, S extends Array<any>>(handler:
                         }
 
                         if (routes[i].hasOwnProperty(_route)) {
-                            // routes[i] = (routes[i] as typeof route)()();
+                            routes[i] = (routes[i] as typeof route)(...routeArgs)();
                         }
                         else if (routes[i].hasOwnProperty(_wrapper)) {
                             routes[i] = (routes[i] as typeof wrapper)();

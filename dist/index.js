@@ -15,7 +15,7 @@ export function createRoute(handler) {
                             routes.splice(i, 1, ...routes[i]);
                         }
                         if (routes[i].hasOwnProperty(_route)) {
-                            // routes[i] = (routes[i] as typeof route)()();
+                            routes[i] = routes[i](...routeArgs)();
                         }
                         else if (routes[i].hasOwnProperty(_wrapper)) {
                             routes[i] = routes[i]();
