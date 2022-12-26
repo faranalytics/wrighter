@@ -1,2 +1,2 @@
-export declare function createRoute<S extends Array<any>, T extends Array<any>>(handler: (...args: [...S, ...T]) => boolean): (...routeArgs: T) => (..._routes: (any | any | ((...args: S) => Promise<boolean | null>) | (any | any | ((...args: S) => Promise<boolean | null>))[])[]) => (...args: S) => Promise<boolean | null>;
+export declare function createRoute<S extends Array<any>, T extends Array<any>>(handler: (...args: [...S, ...T]) => boolean | undefined | null): (...routeArgs: T) => (..._routes: (any | any | ((...args: S) => Promise<boolean | undefined | null>) | (any | any | ((...args: S) => Promise<boolean | undefined | null>))[])[]) => (...args: S) => Promise<boolean | undefined | null>;
 //# sourceMappingURL=index.d.ts.map

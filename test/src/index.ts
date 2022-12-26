@@ -1,7 +1,7 @@
 import * as http from 'node:http';
 import * as util from 'node:util';
 import { ListenOptions } from 'node:net';
-
+import { HTTP404Response, HTTP500Response, HTTPResponse } from './http_responses.js';
 import { createRoute } from 'wrighter';
 
 type T = [
@@ -9,6 +9,17 @@ type T = [
     res: http.ServerResponse,
     ctx: { [key: string]: any }
 ]
+
+let root = createRoute<T, never>((
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    ctx: { [key: string]: any },
+    match: any
+) => {
+    let _scheme = Object.hasOwn(req.socket, 'encrypted') ? 'https' : 'http';
+    console.log(`${_scheme}://${req.headers.host}${req.url}`);
+    return true;
+})();
 
 let matchScheme = createRoute<T, [scheme: string, port: number]>((
     req: http.IncomingMessage,
@@ -18,72 +29,74 @@ let matchScheme = createRoute<T, [scheme: string, port: number]>((
     port: number
 ) => {
 
+    console.log('matchScheme');
+
     if (req.url) {
 
-        let _scheme = Object.hasOwn(req.socket, 'encrypted') ? 'https': 'http';
+        let _scheme = Object.hasOwn(req.socket, 'encrypted') ? 'https' : 'http';
 
         let url = new URL(req.url, `${_scheme}://${req.headers.host}`);
 
         ctx.url = url;
 
-        return scheme === _scheme && port === parseInt(url.port);
+        return scheme === _scheme && port === req.socket.localPort;
     }
+
     return false;
 });
 
-let matchHost = createRoute<T, [regex: RegExp]>((
+let matchHost = createRoute<T, [hostRegex: RegExp]>((
     req: http.IncomingMessage,
     res: http.ServerResponse,
     ctx: { [key: string]: any },
-    regex: RegExp) => {
+    hostRegex: RegExp) => {
+
+    console.log('matchHost');
 
     if (req.url) {
         let url = new URL(req.url, `${ctx['scheme']}://${req.headers.host}`);
         ctx['url'] = url;
-        return regex.test(url.hostname);
+        return hostRegex.test(url.hostname);
     }
     else {
         return false;
     }
 });
 
-let matchMethod = createRoute<T, [regex: RegExp]>((
+let matchMethod = createRoute<T, [methodRegex: RegExp]>((
     req: http.IncomingMessage,
     res: http.ServerResponse,
     ctx: { [key: string]: any },
-    regex: RegExp
+    methodRegex: RegExp
 ) => {
+
+    console.log('matchMethod');
 
     if (req.method) {
-        return regex.test(req.method);
+        return methodRegex.test(req.method);
     }
     else {
         return false;
     }
 });
 
-let matchPath = createRoute<T, [regex: RegExp]>((
+let matchPath = createRoute<T, [pathRegex: RegExp]>((
     req: http.IncomingMessage,
     res: http.ServerResponse,
     ctx: { [key: string]: any },
-    regex: RegExp
+    pathRegex: RegExp
 ) => {
+
+    console.log('matchPath');
+
     if (ctx?.url?.pathname) {
-        return regex.test(ctx.url.pathname);
+        return pathRegex.test(ctx.url.pathname);
     }
     else {
         return false;
     }
 });
 
-let root = createRoute<T, never>((
-    req: http.IncomingMessage,
-    res: http.ServerResponse,
-    ctx: { [key: string]: any },
-    match: any
-) => {
-    return true;
-})();
 
 let resource = createRoute<T, never>((
     req: http.IncomingMessage,
@@ -91,7 +104,11 @@ let resource = createRoute<T, never>((
     ctx: { [key: string]: any },
 ) => {
 
+    console.log('resource');
+
     let body = 'TEST';
+
+    console.log(body);
 
     res.writeHead(200, {
         'Content-Length': Buffer.byteLength(body),
@@ -100,9 +117,8 @@ let resource = createRoute<T, never>((
 
     res.end(body);
 
-    return true;
+    return null;
 });
-
 
 let router = root(
 
@@ -111,9 +127,24 @@ let router = root(
         matchHost(/^farar\.net$/)(
 
             matchMethod(/GET/)(
-
+        
                 matchPath(/\/page/)(
-                    resource()()
+        
+                    resource
+                )
+            )
+        )
+    ),
+    
+    matchScheme('https', 3443)(
+
+        matchHost(/^farar\.net$/)(
+
+            matchMethod(/GET/)(
+        
+                matchPath(/\/page/)(
+        
+                    resource
                 )
             )
         )
@@ -129,10 +160,24 @@ let router = root(
     server.addListener('request', async (req: http.IncomingMessage, res: http.ServerResponse) => {
 
         try {
-            let result = await router(req, res, {})
+            let result = await router(req, res, {});
+
+            if (result === false) {
+                throw new HTTP404Response();
+            }
         }
         catch (e) {
-            console.error(e);
+            if (e instanceof HTTPResponse) {
+                res.writeHead(e.code, {
+                    'Content-Length': Buffer.byteLength(e.message),
+                    'Content-Type': 'text/html'
+                });
+
+                res.end(e.message);
+            }
+            else {
+                throw e;
+            }
         }
     });
 })();

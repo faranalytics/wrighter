@@ -7,7 +7,7 @@ export function createRoute(handler) {
             async function router(...args) {
                 let match = handler(...[...args, ...routeArgs]);
                 let routes = [..._routes];
-                if (match === true) {
+                if (match === true || match === null || typeof match === 'undefined') {
                     for (let i = 0; i < routes.length; i++) {
                         if (Array.isArray(routes[i])) {
                             routes.splice(i, 1, ...routes[i]);
@@ -34,6 +34,7 @@ export function createRoute(handler) {
                             throw new Error(`Expected a route, connect, or router.  Encountered a ${routes[i].name ? routes[i].name : routes[i].toString()} instead.`);
                         }
                     }
+                    return false;
                 }
                 return match;
             }

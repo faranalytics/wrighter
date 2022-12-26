@@ -3,19 +3,19 @@ const _connect = Symbol('connect');
 const _router = Symbol('router');
 
 
-export function createRoute<S extends Array<any>, T extends Array<any>,>(handler: (...args: [...S, ...T]) => boolean) {
+export function createRoute<S extends Array<any>, T extends Array<any>,>(handler: (...args: [...S, ...T]) => boolean | undefined | null) {
 
     function route(...routeArgs: T ): typeof connect {
 
         function connect(..._routes: Array<typeof route | typeof connect | typeof router | Array<typeof route | typeof connect | typeof router>>): typeof router {
 
-            async function router(...args: S): Promise<boolean | null> {
+            async function router(...args: S): Promise<boolean | undefined | null> {
 
-                let match: boolean = handler(...[...args, ...routeArgs]);
+                let match = handler(...[...args, ...routeArgs]);
 
                 let routes = [..._routes];
 
-                if (match === true) {
+                if (match === true || match === null || typeof match === 'undefined') {
 
                     for (let i = 0; i < routes.length; i++) {
 
@@ -47,6 +47,8 @@ export function createRoute<S extends Array<any>, T extends Array<any>,>(handler
                             throw new Error(`Expected a route, connect, or router.  Encountered a ${(routes[i] as typeof route | typeof connect | typeof router).name ? (routes[i] as typeof route | typeof connect | typeof router).name : routes[i].toString()} instead.`)
                         }
                     }
+
+                    return false;
                 }
 
                 return match;
