@@ -1,21 +1,17 @@
-const _route = Symbol('matcher');
-const _wrapper = Symbol('wrapper');
+const _route = Symbol('route');
+const _connect = Symbol('connect');
 const _router = Symbol('router');
 
 
 export function createRoute<S extends Array<any>, T extends Array<any>,>(handler: (...args: [...S, ...T]) => boolean) {
 
-    function route(...routeArgs: T ): typeof wrapper {
+    function route(...routeArgs: T ): typeof connect {
 
-        function wrapper(..._routes: Array<typeof route | typeof wrapper | typeof router | Array<typeof route | typeof wrapper | typeof router>>): typeof router {
+        function connect(..._routes: Array<typeof route | typeof connect | typeof router | Array<typeof route | typeof connect | typeof router>>): typeof router {
 
             async function router(...args: S): Promise<boolean | null> {
 
-                let match: boolean = false;
-
-                let handlerArgs: [...S , ...T] = [...args, ...routeArgs]
-
-                match = handler(...handlerArgs);
+                let match: boolean = handler(...[...args, ...routeArgs]);
 
                 let routes = [..._routes];
 
@@ -24,14 +20,14 @@ export function createRoute<S extends Array<any>, T extends Array<any>,>(handler
                     for (let i = 0; i < routes.length; i++) {
 
                         if (Array.isArray(routes[i])) {
-                            routes.splice(i, 1, ...(routes[i] as Array<typeof route | typeof wrapper | typeof router>));
+                            routes.splice(i, 1, ...(routes[i] as Array<typeof route | typeof connect | typeof router>));
                         }
 
                         if (routes[i].hasOwnProperty(_route)) {
                             routes[i] = (routes[i] as typeof route)(...routeArgs)();
                         }
-                        else if (routes[i].hasOwnProperty(_wrapper)) {
-                            routes[i] = (routes[i] as typeof wrapper)();
+                        else if (routes[i].hasOwnProperty(_connect)) {
+                            routes[i] = (routes[i] as typeof connect)();
                         }
 
                         if (routes[i].hasOwnProperty(_router)) {
@@ -40,12 +36,15 @@ export function createRoute<S extends Array<any>, T extends Array<any>,>(handler
                             if (match === true) {
                                 return match;
                             }
-                            else if (typeof match == 'undefined') {
+                            else if (typeof match == 'undefined' || match == null) {
                                 return null;
+                            }
+                            else if (match !== false) {
+                                throw new Error(`A route handler must return true, undefined, or false; A ${match} was encountered instead.`)
                             }
                         }
                         else {
-                            throw new Error(`Expected a matcher, wrapper, or router.  Encountered a ${(routes[i] as typeof route | typeof wrapper | typeof router).name ? (routes[i] as typeof route | typeof wrapper | typeof router).name : routes[i].toString()} instead.`)
+                            throw new Error(`Expected a route, connect, or router.  Encountered a ${(routes[i] as typeof route | typeof connect | typeof router).name ? (routes[i] as typeof route | typeof connect | typeof router).name : routes[i].toString()} instead.`)
                         }
                     }
                 }
@@ -60,7 +59,7 @@ export function createRoute<S extends Array<any>, T extends Array<any>,>(handler
             });
         }
 
-        return Object.defineProperty(wrapper, _wrapper, {
+        return Object.defineProperty(connect, _connect, {
             value: null,
             writable: false,
             configurable: false

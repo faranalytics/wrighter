@@ -1,13 +1,11 @@
-const _route = Symbol('matcher');
-const _wrapper = Symbol('wrapper');
+const _route = Symbol('route');
+const _connect = Symbol('connect');
 const _router = Symbol('router');
 export function createRoute(handler) {
     function route(...routeArgs) {
-        function wrapper(..._routes) {
+        function connect(..._routes) {
             async function router(...args) {
-                let match = false;
-                let handlerArgs = [...args, ...routeArgs];
-                match = handler(...handlerArgs);
+                let match = handler(...[...args, ...routeArgs]);
                 let routes = [..._routes];
                 if (match === true) {
                     for (let i = 0; i < routes.length; i++) {
@@ -17,7 +15,7 @@ export function createRoute(handler) {
                         if (routes[i].hasOwnProperty(_route)) {
                             routes[i] = routes[i](...routeArgs)();
                         }
-                        else if (routes[i].hasOwnProperty(_wrapper)) {
+                        else if (routes[i].hasOwnProperty(_connect)) {
                             routes[i] = routes[i]();
                         }
                         if (routes[i].hasOwnProperty(_router)) {
@@ -25,12 +23,15 @@ export function createRoute(handler) {
                             if (match === true) {
                                 return match;
                             }
-                            else if (typeof match == 'undefined') {
+                            else if (typeof match == 'undefined' || match == null) {
                                 return null;
+                            }
+                            else if (match !== false) {
+                                throw new Error(`A route handler must return true, undefined, or false; A ${match} was encountered instead.`);
                             }
                         }
                         else {
-                            throw new Error(`Expected a matcher, wrapper, or router.  Encountered a ${routes[i].name ? routes[i].name : routes[i].toString()} instead.`);
+                            throw new Error(`Expected a route, connect, or router.  Encountered a ${routes[i].name ? routes[i].name : routes[i].toString()} instead.`);
                         }
                     }
                 }
@@ -42,7 +43,7 @@ export function createRoute(handler) {
                 configurable: false
             });
         }
-        return Object.defineProperty(wrapper, _wrapper, {
+        return Object.defineProperty(connect, _connect, {
             value: null,
             writable: false,
             configurable: false

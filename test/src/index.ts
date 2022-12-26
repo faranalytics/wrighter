@@ -4,93 +4,91 @@ import { ListenOptions } from 'node:net';
 
 import { createRoute } from 'wrighter';
 
-type S = [
-    http.IncomingMessage,
-    http.ServerResponse,
-    { [key: string]: any }
+type T = [
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    ctx: { [key: string]: any }
 ]
 
-let matchScheme = createRoute<S, [string]>((
+let matchScheme = createRoute<T, [scheme: string, port: number]>((
     req: http.IncomingMessage,
     res: http.ServerResponse,
     ctx: { [key: string]: any },
-    match: string
+    scheme: string,
+    port: number
 ) => {
 
-    if (match == 'https') {
-        ctx['scheme'] = 'https';
-        return Object.hasOwn(req.socket, 'encrypted')
-    }
-    else if (match == 'http') {
-        ctx['scheme'] = 'http';
-        return !Object.hasOwn(req.socket, 'encrypted')
-    }
-    else {
-        throw new Error();
-    }
+    if (req.url) {
 
+        let _scheme = Object.hasOwn(req.socket, 'encrypted') ? 'https': 'http';
+
+        let url = new URL(req.url, `${_scheme}://${req.headers.host}`);
+
+        ctx.url = url;
+
+        return scheme === _scheme && port === parseInt(url.port);
+    }
     return false;
 });
 
-let matchHost = createRoute<S, [RegExp]>((
+let matchHost = createRoute<T, [regex: RegExp]>((
     req: http.IncomingMessage,
     res: http.ServerResponse,
     ctx: { [key: string]: any },
-    match: RegExp) => {
+    regex: RegExp) => {
 
     if (req.url) {
         let url = new URL(req.url, `${ctx['scheme']}://${req.headers.host}`);
         ctx['url'] = url;
-        return match.test(url.hostname);
+        return regex.test(url.hostname);
     }
     else {
         return false;
     }
 });
 
-let matchMethod = createRoute<S, [RegExp]>((
+let matchMethod = createRoute<T, [regex: RegExp]>((
     req: http.IncomingMessage,
     res: http.ServerResponse,
     ctx: { [key: string]: any },
-    match: RegExp
+    regex: RegExp
 ) => {
 
     if (req.method) {
-        return match.test(req.method);
+        return regex.test(req.method);
     }
     else {
         return false;
     }
 });
 
-let matchPath = createRoute<S, [RegExp]>((
+let matchPath = createRoute<T, [regex: RegExp]>((
     req: http.IncomingMessage,
     res: http.ServerResponse,
     ctx: { [key: string]: any },
-    match: RegExp
+    regex: RegExp
 ) => {
     if (ctx?.url?.pathname) {
-        return match.test(ctx.url.pathname);
+        return regex.test(ctx.url.pathname);
     }
     else {
         return false;
     }
 });
 
-let root = createRoute<S, [any]>((
+let root = createRoute<T, never>((
     req: http.IncomingMessage,
     res: http.ServerResponse,
     ctx: { [key: string]: any },
     match: any
 ) => {
     return true;
-})(null);
+})();
 
-let resource = createRoute<S, [any]>((
+let resource = createRoute<T, never>((
     req: http.IncomingMessage,
     res: http.ServerResponse,
     ctx: { [key: string]: any },
-    match: any
 ) => {
 
     let body = 'TEST';
@@ -105,22 +103,18 @@ let resource = createRoute<S, [any]>((
     return true;
 });
 
-let paths: Array<any> = [];
-
-paths.push(
-    matchPath(/\/page/)(
-        resource
-    )
-)
 
 let router = root(
 
-    matchScheme('http')(
+    matchScheme('http', 3000)(
 
         matchHost(/^farar\.net$/)(
 
             matchMethod(/GET/)(
-                paths
+
+                matchPath(/\/page/)(
+                    resource()()
+                )
             )
         )
     )
@@ -137,10 +131,8 @@ let router = root(
         try {
             let result = await router(req, res, {})
         }
-        catch(e){
+        catch (e) {
             console.error(e);
         }
     });
 })();
-
-
