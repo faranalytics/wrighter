@@ -1,16 +1,20 @@
-const _matcher = Symbol('matcher');
+const _route = Symbol('matcher');
 const _wrapper = Symbol('wrapper');
 const _router = Symbol('router');
 
-export function create(handler: (...args: Array<any>) => boolean) {
+export function createRoute<T extends Array<any>, S extends Array<any>>(handler: (...args: [...S, ...T]) => boolean) {
 
-    function matcher(...matches: Array<any>): typeof wrapper {
+    function route(...routeArgs: T ): typeof wrapper {
 
-        function wrapper(..._routes: Array<typeof matcher | typeof wrapper | typeof router | Array<typeof matcher | typeof wrapper | typeof router>>): typeof router {
+        function wrapper(..._routes: Array<typeof route | typeof wrapper | typeof router | Array<typeof route | typeof wrapper | typeof router>>): typeof router {
 
-            async function router(...args: Array<any>): Promise<boolean | null> {
+            async function router(...args: S): Promise<boolean | null> {
 
-                let match = handler(...args, ...matches);
+                let match: boolean = false;
+
+                let handlerArgs: [...S , ...T] = [...args, ...routeArgs]
+
+                match = handler(...handlerArgs);
 
                 let routes = [..._routes];
 
@@ -19,11 +23,11 @@ export function create(handler: (...args: Array<any>) => boolean) {
                     for (let i = 0; i < routes.length; i++) {
 
                         if (Array.isArray(routes[i])) {
-                            routes.splice(i, 1, ...(routes[i] as Array<typeof matcher | typeof wrapper | typeof router>));
+                            routes.splice(i, 1, ...(routes[i] as Array<typeof route | typeof wrapper | typeof router>));
                         }
 
-                        if (routes[i].hasOwnProperty(_matcher)) {
-                            routes[i] = (routes[i] as typeof matcher)()();
+                        if (routes[i].hasOwnProperty(_route)) {
+                            // routes[i] = (routes[i] as typeof route)()();
                         }
                         else if (routes[i].hasOwnProperty(_wrapper)) {
                             routes[i] = (routes[i] as typeof wrapper)();
@@ -40,7 +44,7 @@ export function create(handler: (...args: Array<any>) => boolean) {
                             }
                         }
                         else {
-                            throw new Error(`Expected a matcher, wrapper, or router.  Encountered a ${(routes[i] as typeof matcher | typeof wrapper | typeof router).name ? (routes[i] as typeof matcher | typeof wrapper | typeof router).name : routes[i].toString()} instead.`)
+                            throw new Error(`Expected a matcher, wrapper, or router.  Encountered a ${(routes[i] as typeof route | typeof wrapper | typeof router).name ? (routes[i] as typeof route | typeof wrapper | typeof router).name : routes[i].toString()} instead.`)
                         }
                     }
                 }
@@ -62,7 +66,7 @@ export function create(handler: (...args: Array<any>) => boolean) {
         });
     }
 
-    return Object.defineProperty(matcher, _matcher, {
+    return Object.defineProperty(route, _route, {
         value: null,
         writable: false,
         configurable: false
