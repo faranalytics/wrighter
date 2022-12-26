@@ -101,7 +101,7 @@ let matchPath = createRoute<T, [pathRegex: RegExp]>((
 let resource = createRoute<T, never>((
     req: http.IncomingMessage,
     res: http.ServerResponse,
-    ctx: { [key: string]: any },
+    ctx: { [key: string]: any }
 ) => {
 
     console.log('resource');
@@ -135,7 +135,7 @@ let router = root(
             )
         )
     ),
-    
+
     matchScheme('https', 3443)(
 
         matchHost(/^farar\.net$/)(
