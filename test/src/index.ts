@@ -127,20 +127,23 @@ let router = root(
             matchMethod(/GET/)(
         
                 matchPath(/\/page/)(
-        
+                    resource
+                ),
+
+                matchPath(/\/api/)(
                     resource
                 )
             )
         )
     ),
 
-    matchScheme('https', 3443)(
+    matchScheme('http', 3443)(
 
         matchHost(/^farar\.net$/)(
 
             matchMethod(/GET/)(
         
-                matchPath(/\/page/)(
+                matchPath(/\/page2/)(
         
                     resource
                 )
