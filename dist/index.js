@@ -8,8 +8,8 @@ export function createRoute(handler) {
             async function router(...args) {
                 logger.debug(`Calling: ${handler.name}(${[...args, ...routeArgs]})`);
                 let match = handler(...[...args, ...routeArgs]);
-                let routes = [..._routes];
                 if (match === true) {
+                    let routes = [..._routes];
                     for (let i = 0; i < routes.length; i++) {
                         if (Array.isArray(routes[i])) {
                             routes.splice(i, 1, ...routes[i]);

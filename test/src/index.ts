@@ -14,7 +14,7 @@ export class Context {
             return JSON.stringify(this);
         }
         catch (e) {
-            return Object.toString();
+            return '[object Object]';
         }
     }
 }
@@ -148,6 +148,7 @@ let getResource = createRoute<T, never>(function getResource(
 });
 
 
+
 let handler = new ConsoleHandler<string, string>();
 handler.setLevel(Level.DEBUG);
 let formatter = new Formatter<string, string>(
@@ -157,6 +158,8 @@ let formatter = new Formatter<string, string>(
     });
 handler.setFormatter(formatter);
 log.addHandler(handler);
+
+
 
 let router = httpAdapter(
     logRequest(log.debug)(

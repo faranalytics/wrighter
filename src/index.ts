@@ -16,10 +16,10 @@ export function createRoute<S extends Array<any>, T extends Array<any>,>(handler
 
                 let match = handler(...[...args, ...routeArgs]);
 
-                let routes = [..._routes];
-
                 if (match === true) {
 
+                    let routes = [..._routes];
+                    
                     for (let i = 0; i < routes.length; i++) {
 
                         if (Array.isArray(routes[i])) {
