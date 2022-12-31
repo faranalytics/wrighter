@@ -9,7 +9,7 @@ export function createRoute(handler) {
                 logger.debug(`Calling: ${handler.name}(${[...args, ...routeArgs]})`);
                 let match = handler(...[...args, ...routeArgs]);
                 let routes = [..._routes];
-                if (match === true || match === null || typeof match === 'undefined') {
+                if (match === true) {
                     for (let i = 0; i < routes.length; i++) {
                         if (Array.isArray(routes[i])) {
                             routes.splice(i, 1, ...routes[i]);
@@ -23,7 +23,7 @@ export function createRoute(handler) {
                         if (routes[i].hasOwnProperty(_router)) {
                             let match = await routes[i](...args);
                             if (match === true) {
-                                return match;
+                                return true;
                             }
                             else if (typeof match == 'undefined' || match == null) {
                                 return null;
@@ -38,7 +38,10 @@ export function createRoute(handler) {
                     }
                     return false;
                 }
-                return match;
+                else if (match === null || typeof match === 'undefined') {
+                    return null;
+                }
+                return false;
             }
             return Object.defineProperty(router, _router, {
                 value: null,

@@ -5,19 +5,6 @@ import { HTTP404Response, HTTP500Response, HTTPResponse } from './http_responses
 import { createRoute } from 'wrighter';
 import { logger as log, Level, Formatter, ConsoleHandler, IMeta } from 'memoir';
 
-let handler = new ConsoleHandler<string, string>();
-
-handler.setLevel(Level.DEBUG);
-
-let formatter = new Formatter<string, string>(
-    (message: string, { level, func, url, line, col }: IMeta): string => {
-        return `${level}:${new Date().toISOString()}:${url?.replace(/^.*\/(.*)$/, '$1')}:${func}:${line}:${col}:${message}`;
-    });
-
-handler.setFormatter(formatter);
-
-log.addHandler(handler);
-
 export class Context {
 
     [key: string]: any;
@@ -26,7 +13,7 @@ export class Context {
         try {
             return JSON.stringify(this);
         }
-        catch(e) {
+        catch (e) {
             return Object.toString();
         }
     }
@@ -81,91 +68,73 @@ function httpAdapter(router: (...args: T) => Promise<boolean | void | null>) {
 let logRequest = createRoute<T, [log: (message: string) => void]>(function logRequest(
     req: http.IncomingMessage,
     res: http.ServerResponse,
-    ctx: Context = new Context(),
+    ctx: Context,
     log: (message: any) => void
 ) {
     let scheme = Object.hasOwn(req.socket, 'encrypted') ? 'https' : 'http';
-
     log(`${scheme}://${req.headers.host}${req.url}`);
-
     return true;
 });
 
 let matchSchemePort = createRoute<T, [scheme: string, port: number]>(function matchSchemePort(
     req: http.IncomingMessage,
     res: http.ServerResponse,
-    ctx: Context = new Context(),
+    ctx: Context,
     scheme: string,
     port: number
 ) {
     if (req.url) {
-
         let _scheme = Object.hasOwn(req.socket, 'encrypted') ? 'https' : 'http';
-
         let url = new URL(req.url, `${_scheme}://${req.headers.host}`);
-
         ctx.url = url;
-
         return scheme === _scheme && port === req.socket.localPort;
     }
-
     return false;
 });
 
 let matchHost = createRoute<T, [hostRegex: RegExp]>(function matchHost(
     req: http.IncomingMessage,
     res: http.ServerResponse,
-    ctx: Context = new Context(),
+    ctx: Context,
     hostRegex: RegExp) {
     if (req.url) {
         let url = new URL(req.url, `${ctx['scheme']}://${req.headers.host}`);
         ctx['url'] = url;
         return hostRegex.test(url.hostname);
     }
-    else {
-        return false;
-    }
+    return false;
 });
 
 let matchMethod = createRoute<T, [methodRegex: RegExp]>(function matchMethod(
     req: http.IncomingMessage,
     res: http.ServerResponse,
-    ctx: Context = new Context(),
+    ctx: Context,
     methodRegex: RegExp
 ) {
     if (req.method) {
         return methodRegex.test(req.method);
     }
-    else {
-        return false;
-    }
+    return false;
 });
 
 let matchPath = createRoute<T, [pathRegex: RegExp]>(function matchPath(
     req: http.IncomingMessage,
     res: http.ServerResponse,
-    ctx: Context = new Context(),
+    ctx: Context,
     pathRegex: RegExp
 ) {
     if (ctx?.url?.pathname) {
         return pathRegex.test(ctx.url.pathname);
     }
-    else {
-        return false;
-    }
+    return false;
 });
 
 
 let getResource = createRoute<T, never>(function getResource(
     req: http.IncomingMessage,
     res: http.ServerResponse,
-    ctx: Context = new Context(),
+    ctx: Context
 ) {
-    console.log('Calling toString');
-    ctx.toString();
-
-    log.debug(`CTX ${ctx.toString()}`);
-
     let body = 'TEST';
 
     log.info(body);
@@ -178,8 +147,19 @@ let getResource = createRoute<T, never>(function getResource(
     res.end(body);
 });
 
+
+let handler = new ConsoleHandler<string, string>();
+handler.setLevel(Level.DEBUG);
+let formatter = new Formatter<string, string>(
+    (message: string, { level, func, url, line, col }: IMeta): string => {
+        url = url?.replace(/^.*\/(.*)$/, '$1');
+        return `${level}:${new Date().toISOString()}:${url}:${func}:${line}:${col}:${message}`;
+    });
+handler.setFormatter(formatter);
+log.addHandler(handler);
+
 let router = httpAdapter(
-    logRequest(log.info)(
+    logRequest(log.debug)(
         matchHost(/^farar\.net$/)(
             matchSchemePort('http', 3000)(
                 matchMethod(/GET/)(
@@ -198,4 +178,4 @@ let router = httpAdapter(
     )
 );
 
-let server = http.createServer(router).listen({ port: 3000 });
+http.createServer(router).listen({ port: 3000 });

@@ -18,7 +18,7 @@ export function createRoute<S extends Array<any>, T extends Array<any>,>(handler
 
                 let routes = [..._routes];
 
-                if (match === true || match === null || typeof match === 'undefined') {
+                if (match === true) {
 
                     for (let i = 0; i < routes.length; i++) {
 
@@ -37,7 +37,7 @@ export function createRoute<S extends Array<any>, T extends Array<any>,>(handler
                             let match = await (routes[i] as typeof router)(...args);
 
                             if (match === true) {
-                                return match;
+                                return true;
                             }
                             else if (typeof match == 'undefined' || match == null) {
                                 return null;
@@ -53,8 +53,11 @@ export function createRoute<S extends Array<any>, T extends Array<any>,>(handler
 
                     return false;
                 }
+                else if (match === null || typeof match === 'undefined') {
+                    return null;
+                }
 
-                return match;
+                return false;
             }
 
             return Object.defineProperty(router, _router, {
