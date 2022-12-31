@@ -20,5 +20,8 @@
     "@types/node": "^18.11.9",
     "typescript": "^4.9.3"
   },
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "memoir": "^1.0.8"
+  }
 }

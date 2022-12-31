@@ -1,3 +1,4 @@
+import { logger } from 'memoir';
 const _route = Symbol('route');
 const _connect = Symbol('connect');
 const _router = Symbol('router');
@@ -5,6 +6,7 @@ export function createRoute(handler) {
     function route(...routeArgs) {
         function connect(..._routes) {
             async function router(...args) {
+                logger.debug(`Calling: ${handler.name}(${[...args, ...routeArgs]})`);
                 let match = handler(...[...args, ...routeArgs]);
                 let routes = [..._routes];
                 if (match === true || match === null || typeof match === 'undefined') {

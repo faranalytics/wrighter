@@ -3,34 +3,101 @@ import * as util from 'node:util';
 import { ListenOptions } from 'node:net';
 import { HTTP404Response, HTTP500Response, HTTPResponse } from './http_responses.js';
 import { createRoute } from 'wrighter';
+import { logger as log, Level, Formatter, ConsoleHandler, IMeta } from 'memoir';
+
+let handler = new ConsoleHandler<string, string>();
+
+handler.setLevel(Level.DEBUG);
+
+let formatter = new Formatter<string, string>(
+    (message: string, { level, func, url, line, col }: IMeta): string => {
+        return `${level}:${new Date().toISOString()}:${url?.replace(/^.*\/(.*)$/, '$1')}:${func}:${line}:${col}:${message}`;
+    });
+
+handler.setFormatter(formatter);
+
+log.addHandler(handler);
+
+export class Context {
+
+    [key: string]: any;
+
+    toString() {
+        try {
+            return JSON.stringify(this);
+        }
+        catch(e) {
+            return Object.toString();
+        }
+    }
+}
 
 type T = [
     req: http.IncomingMessage,
     res: http.ServerResponse,
-    ctx: { [key: string]: any }
+    ctx: Context
 ]
 
-let root = createRoute<T, never>((
-    req: http.IncomingMessage,
-    res: http.ServerResponse,
-    ctx: { [key: string]: any },
-    match: any
-) => {
-    let _scheme = Object.hasOwn(req.socket, 'encrypted') ? 'https' : 'http';
-    console.log(`${_scheme}://${req.headers.host}${req.url}`);
-    return true;
-})();
+function httpAdapter(router: (...args: T) => Promise<boolean | void | null>) {
 
-let matchScheme = createRoute<T, [scheme: string, port: number]>((
+    return async function (req: http.IncomingMessage, res: http.ServerResponse) {
+
+        try {
+            let result = await router(req, res, new Context());
+
+            if (result === false) {
+                throw new HTTP404Response();
+            }
+        }
+        catch (e: unknown) {
+
+            if (e instanceof HTTPResponse) {
+
+                res.writeHead(e.code, {
+                    'Content-Length': Buffer.byteLength(e.message),
+                    'Content-Type': 'text/html'
+                });
+
+                res.end(e.message);
+            }
+            else {
+                let message = 'Internal Server Error';
+
+                res.writeHead(500, {
+                    'Content-Length': Buffer.byteLength(message),
+                    'Content-Type': 'text/html'
+                });
+
+                res.end(message);
+
+                if (e instanceof Error) {
+                    log.debug(e.stack ? e.stack : e.message);
+                }
+            }
+        }
+    }
+}
+
+let logRequest = createRoute<T, [log: (message: string) => void]>(function logRequest(
     req: http.IncomingMessage,
     res: http.ServerResponse,
-    ctx: { [key: string]: any },
+    ctx: Context = new Context(),
+    log: (message: any) => void
+) {
+    let scheme = Object.hasOwn(req.socket, 'encrypted') ? 'https' : 'http';
+
+    log(`${scheme}://${req.headers.host}${req.url}`);
+
+    return true;
+});
+
+let matchSchemePort = createRoute<T, [scheme: string, port: number]>(function matchSchemePort(
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    ctx: Context = new Context(),
     scheme: string,
     port: number
-) => {
-
-    console.log('matchScheme');
-
+) {
     if (req.url) {
 
         let _scheme = Object.hasOwn(req.socket, 'encrypted') ? 'https' : 'http';
@@ -45,14 +112,11 @@ let matchScheme = createRoute<T, [scheme: string, port: number]>((
     return false;
 });
 
-let matchHost = createRoute<T, [hostRegex: RegExp]>((
+let matchHost = createRoute<T, [hostRegex: RegExp]>(function matchHost(
     req: http.IncomingMessage,
     res: http.ServerResponse,
-    ctx: { [key: string]: any },
-    hostRegex: RegExp) => {
-
-    console.log('matchHost');
-
+    ctx: Context = new Context(),
+    hostRegex: RegExp) {
     if (req.url) {
         let url = new URL(req.url, `${ctx['scheme']}://${req.headers.host}`);
         ctx['url'] = url;
@@ -63,15 +127,12 @@ let matchHost = createRoute<T, [hostRegex: RegExp]>((
     }
 });
 
-let matchMethod = createRoute<T, [methodRegex: RegExp]>((
+let matchMethod = createRoute<T, [methodRegex: RegExp]>(function matchMethod(
     req: http.IncomingMessage,
     res: http.ServerResponse,
-    ctx: { [key: string]: any },
+    ctx: Context = new Context(),
     methodRegex: RegExp
-) => {
-
-    console.log('matchMethod');
-
+) {
     if (req.method) {
         return methodRegex.test(req.method);
     }
@@ -80,15 +141,12 @@ let matchMethod = createRoute<T, [methodRegex: RegExp]>((
     }
 });
 
-let matchPath = createRoute<T, [pathRegex: RegExp]>((
+let matchPath = createRoute<T, [pathRegex: RegExp]>(function matchPath(
     req: http.IncomingMessage,
     res: http.ServerResponse,
-    ctx: { [key: string]: any },
+    ctx: Context = new Context(),
     pathRegex: RegExp
-) => {
-
-    console.log('matchPath');
-
+) {
     if (ctx?.url?.pathname) {
         return pathRegex.test(ctx.url.pathname);
     }
@@ -98,17 +156,19 @@ let matchPath = createRoute<T, [pathRegex: RegExp]>((
 });
 
 
-let resource = createRoute<T, never>((
+let getResource = createRoute<T, never>(function getResource(
     req: http.IncomingMessage,
     res: http.ServerResponse,
-    ctx: { [key: string]: any }
-) => {
+    ctx: Context = new Context(),
+) {
+    console.log('Calling toString');
+    ctx.toString();
 
-    console.log('resource');
+    log.debug(`CTX ${ctx.toString()}`);
 
     let body = 'TEST';
 
-    console.log(body);
+    log.info(body);
 
     res.writeHead(200, {
         'Content-Length': Buffer.byteLength(body),
@@ -118,67 +178,24 @@ let resource = createRoute<T, never>((
     res.end(body);
 });
 
-let router = root(
-
-    matchScheme('http', 3000)(
-
+let router = httpAdapter(
+    logRequest(log.info)(
         matchHost(/^farar\.net$/)(
-
-            matchMethod(/GET/)(
-        
-                matchPath(/\/page/)(
-                    resource
-                ),
-
-                matchPath(/\/api/)(
-                    resource
+            matchSchemePort('http', 3000)(
+                matchMethod(/GET/)(
+                    matchPath(/\/page/)(
+                        getResource
+                    ),
+                    matchPath(/\/api/)(
+                        getResource
+                    )
                 )
-            )
-        )
-    ),
+            ),
+            matchSchemePort('https', 3443)(
 
-    matchScheme('http', 3443)(
-
-        matchHost(/^farar\.net$/)(
-
-            matchMethod(/GET/)(
-        
-                matchPath(/\/page2/)(
-        
-                    resource
-                )
             )
         )
     )
 );
 
-(async () => {
-
-    let options: ListenOptions = { port: 3000 };
-
-    let server = new http.Server().listen(options);
-
-    server.addListener('request', async (req: http.IncomingMessage, res: http.ServerResponse) => {
-
-        try {
-            let result = await router(req, res, {});
-
-            if (result === false) {
-                throw new HTTP404Response();
-            }
-        }
-        catch (e) {
-            if (e instanceof HTTPResponse) {
-                res.writeHead(e.code, {
-                    'Content-Length': Buffer.byteLength(e.message),
-                    'Content-Type': 'text/html'
-                });
-
-                res.end(e.message);
-            }
-            else {
-                throw e;
-            }
-        }
-    });
-})();
+let server = http.createServer(router).listen({ port: 3000 });
