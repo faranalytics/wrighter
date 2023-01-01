@@ -1,4 +1,7 @@
 import { logger } from 'memoir';
+import { ACCEPT, DENY, accept, deny } from './symbols.js';
+
+export { ACCEPT, DENY, accept, deny } from './symbols.js';
 
 const _route = Symbol('route');
 const _connect = Symbol('connect');
@@ -12,7 +15,7 @@ export function createRoute<ArgsT extends Array<any>, ReturnT extends (...args: 
 
         function connect(..._routes: Array<typeof router | typeof connect | typeof route | Array<typeof router | typeof connect | typeof route>>): ReturnT {
 
-            async function router(...routeArgs: Array<any>) {
+            async function router(...routeArgs: Array<any>): Promise<any> {
 
                 if (typeof closure == 'function') {
 
@@ -20,7 +23,7 @@ export function createRoute<ArgsT extends Array<any>, ReturnT extends (...args: 
 
                     let match = await closure(...routeArgs);
 
-                    if (match === true) {
+                    if (match === accept) {
 
                         let routes = [..._routes];
 
@@ -35,16 +38,11 @@ export function createRoute<ArgsT extends Array<any>, ReturnT extends (...args: 
                             }
 
                             if (routes[i].hasOwnProperty(_router)) {
+
                                 let match = await (routes[i] as typeof router)(...routeArgs);
 
-                                if (match === true) {
-                                    return true;
-                                }
-                                else if (typeof match == 'undefined' || match == null) {
-                                    return null;
-                                }
-                                else if (match !== false) {
-                                    throw new Error(`A route handler must return true, null, or false; A ${match} was encountered instead.`)
+                                if (match !== deny) {
+                                    return match;
                                 }
                             }
                             else {
@@ -52,13 +50,13 @@ export function createRoute<ArgsT extends Array<any>, ReturnT extends (...args: 
                             }
                         }
 
-                        return false;
+                        return deny;
                     }
-                    else if (match === null || typeof match === 'undefined') {
-                        return null;
+                    else if (match !== deny) {
+                        return match;
                     }
 
-                    return false;
+                    return deny;
                 }
             }
 

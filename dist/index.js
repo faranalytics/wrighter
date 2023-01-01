@@ -1,4 +1,6 @@
 import { logger } from 'memoir';
+import { accept, deny } from './symbols.js';
+export { ACCEPT, DENY, accept, deny } from './symbols.js';
 const _route = Symbol('route');
 const _connect = Symbol('connect');
 const _router = Symbol('router');
@@ -10,7 +12,7 @@ export function createRoute(fn) {
                 if (typeof closure == 'function') {
                     logger.debug(`Calling: ${closure.name}(${[...routeArgs]})`);
                     let match = await closure(...routeArgs);
-                    if (match === true) {
+                    if (match === accept) {
                         let routes = [..._routes];
                         for (let i = 0; i < routes.length; i++) {
                             if (Array.isArray(routes[i])) {
@@ -21,26 +23,20 @@ export function createRoute(fn) {
                             }
                             if (routes[i].hasOwnProperty(_router)) {
                                 let match = await routes[i](...routeArgs);
-                                if (match === true) {
-                                    return true;
-                                }
-                                else if (typeof match == 'undefined' || match == null) {
-                                    return null;
-                                }
-                                else if (match !== false) {
-                                    throw new Error(`A route handler must return true, null, or false; A ${match} was encountered instead.`);
+                                if (match !== deny) {
+                                    return match;
                                 }
                             }
                             else {
                                 throw new Error(`Expected a connect, or router.  Encountered a ${routes[i].toString()} instead.`);
                             }
                         }
-                        return false;
+                        return deny;
                     }
-                    else if (match === null || typeof match === 'undefined') {
-                        return null;
+                    else if (match !== deny) {
+                        return match;
                     }
-                    return false;
+                    return deny;
                 }
             }
             return Object.defineProperty(router, _router, {
