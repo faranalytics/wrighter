@@ -2,46 +2,46 @@ import { logger } from 'memoir';
 const _route = Symbol('route');
 const _connect = Symbol('connect');
 const _router = Symbol('router');
-export function createRoute(handler) {
-    function route(...routeArgs) {
+export function createRoute(fn) {
+    function route(...args) {
+        let closure = fn(...args);
         function connect(..._routes) {
-            async function router(...args) {
-                logger.debug(`Calling: ${handler.name}(${[...args, ...routeArgs]})`);
-                let match = handler(...[...args, ...routeArgs]);
-                if (match === true) {
-                    let routes = [..._routes];
-                    for (let i = 0; i < routes.length; i++) {
-                        if (Array.isArray(routes[i])) {
-                            routes.splice(i, 1, ...routes[i]);
-                        }
-                        if (routes[i].hasOwnProperty(_route)) {
-                            routes[i] = routes[i](...routeArgs)();
-                        }
-                        else if (routes[i].hasOwnProperty(_connect)) {
-                            routes[i] = routes[i]();
-                        }
-                        if (routes[i].hasOwnProperty(_router)) {
-                            let match = await routes[i](...args);
-                            if (match === true) {
-                                return true;
+            async function router(...routeArgs) {
+                if (typeof closure == 'function') {
+                    logger.debug(`Calling: ${closure.name}(${[...routeArgs]})`);
+                    let match = await closure(...routeArgs);
+                    if (match === true) {
+                        let routes = [..._routes];
+                        for (let i = 0; i < routes.length; i++) {
+                            if (Array.isArray(routes[i])) {
+                                routes.splice(i, 1, ...routes[i]);
                             }
-                            else if (typeof match == 'undefined' || match == null) {
-                                return null;
+                            if (routes[i].hasOwnProperty(_connect)) {
+                                routes[i] = routes[i](...[]);
                             }
-                            else if (match !== false) {
-                                throw new Error(`A route handler must return true, undefined, or false; A ${match} was encountered instead.`);
+                            if (routes[i].hasOwnProperty(_router)) {
+                                let match = await routes[i](...routeArgs);
+                                if (match === true) {
+                                    return true;
+                                }
+                                else if (typeof match == 'undefined' || match == null) {
+                                    return null;
+                                }
+                                else if (match !== false) {
+                                    throw new Error(`A route handler must return true, null, or false; A ${match} was encountered instead.`);
+                                }
+                            }
+                            else {
+                                throw new Error(`Expected a connect, or router.  Encountered a ${routes[i].toString()} instead.`);
                             }
                         }
-                        else {
-                            throw new Error(`Expected a route, connect, or router.  Encountered a ${routes[i].name ? routes[i].name : routes[i].toString()} instead.`);
-                        }
+                        return false;
+                    }
+                    else if (match === null || typeof match === 'undefined') {
+                        return null;
                     }
                     return false;
                 }
-                else if (match === null || typeof match === 'undefined') {
-                    return null;
-                }
-                return false;
             }
             return Object.defineProperty(router, _router, {
                 value: null,

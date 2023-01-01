@@ -4,67 +4,69 @@ const _route = Symbol('route');
 const _connect = Symbol('connect');
 const _router = Symbol('router');
 
-export function createRoute<S extends Array<any>, T extends Array<any>,>(handler: (...args: [...S, ...T]) => boolean | void | null) {
+export function createRoute<ArgsT extends Array<any>, ReturnT extends (...args: Array<any>) => Promise<any>>(fn: (...args: ArgsT) => ReturnT) {
 
-    function route(...routeArgs: T): typeof connect {
+    function route(...args: ArgsT) {
 
-        function connect(..._routes: Array<typeof route | typeof connect | typeof router | Array<typeof route | typeof connect | typeof router>>): typeof router {
+        let closure: ReturnT = fn(...args);
 
-            async function router(...args: S): Promise<boolean | void | null> {
+        function connect(..._routes: Array<typeof router | typeof connect | typeof route | Array<typeof router | typeof connect | typeof route>>): ReturnT {
 
-                logger.debug(`Calling: ${handler.name}(${[...args, ...routeArgs]})`);
+            async function router(...routeArgs: Array<any>) {
 
-                let match = handler(...[...args, ...routeArgs]);
+                if (typeof closure == 'function') {
 
-                if (match === true) {
+                    logger.debug(`Calling: ${closure.name}(${[...routeArgs]})`);
 
-                    let routes = [..._routes];
-                    
-                    for (let i = 0; i < routes.length; i++) {
+                    let match = await closure(...routeArgs);
 
-                        if (Array.isArray(routes[i])) {
-                            routes.splice(i, 1, ...(routes[i] as Array<typeof route | typeof connect | typeof router>));
-                        }
+                    if (match === true) {
 
-                        if (routes[i].hasOwnProperty(_route)) {
-                            routes[i] = (routes[i] as typeof route)(...routeArgs)();
-                        }
-                        else if (routes[i].hasOwnProperty(_connect)) {
-                            routes[i] = (routes[i] as typeof connect)();
-                        }
+                        let routes = [..._routes];
 
-                        if (routes[i].hasOwnProperty(_router)) {
-                            let match = await (routes[i] as typeof router)(...args);
+                        for (let i = 0; i < routes.length; i++) {
 
-                            if (match === true) {
-                                return true;
+                            if (Array.isArray(routes[i])) {
+                                routes.splice(i, 1, ...(routes[i] as Array<typeof router>));
                             }
-                            else if (typeof match == 'undefined' || match == null) {
-                                return null;
+
+                            if (routes[i].hasOwnProperty(_connect)) {
+                                routes[i] = (routes[i] as typeof connect)(...[] as typeof _routes);
                             }
-                            else if (match !== false) {
-                                throw new Error(`A route handler must return true, undefined, or false; A ${match} was encountered instead.`)
+
+                            if (routes[i].hasOwnProperty(_router)) {
+                                let match = await (routes[i] as typeof router)(...routeArgs);
+
+                                if (match === true) {
+                                    return true;
+                                }
+                                else if (typeof match == 'undefined' || match == null) {
+                                    return null;
+                                }
+                                else if (match !== false) {
+                                    throw new Error(`A route handler must return true, null, or false; A ${match} was encountered instead.`)
+                                }
+                            }
+                            else {
+                                throw new Error(`Expected a connect, or router.  Encountered a ${routes[i].toString()} instead.`)
                             }
                         }
-                        else {
-                            throw new Error(`Expected a route, connect, or router.  Encountered a ${(routes[i] as typeof route | typeof connect | typeof router).name ? (routes[i] as typeof route | typeof connect | typeof router).name : routes[i].toString()} instead.`)
-                        }
+
+                        return false;
+                    }
+                    else if (match === null || typeof match === 'undefined') {
+                        return null;
                     }
 
                     return false;
                 }
-                else if (match === null || typeof match === 'undefined') {
-                    return null;
-                }
-
-                return false;
             }
 
             return Object.defineProperty(router, _router, {
                 value: null,
                 writable: false,
                 configurable: false
-            });
+            }) as ReturnT;
         }
 
         return Object.defineProperty(connect, _connect, {
