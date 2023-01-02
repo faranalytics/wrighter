@@ -1,5 +1,5 @@
 import { logger } from 'memoir';
-import { ACCEPT, DENY, accept, deny } from './symbols.js';
+import { accept, deny } from './symbols.js';
 
 export { logger } from 'memoir';
 export { ACCEPT, DENY, accept, deny } from './symbols.js';
@@ -14,7 +14,7 @@ export function createRoute<ArgsT extends Array<any>, ReturnT extends (...args: 
 
         let closure: ReturnT = fn(...args);
 
-        function connect(..._routes: Array<typeof router | typeof connect | typeof route | Array<typeof router | typeof connect | typeof route>>): ReturnT {
+        function connect(...routes: Array<typeof router | typeof connect | typeof route | Array<typeof router | typeof connect | typeof route>>): ReturnT {
 
             async function router(...routeArgs: Array<any>): Promise<any> {
 
@@ -26,28 +26,28 @@ export function createRoute<ArgsT extends Array<any>, ReturnT extends (...args: 
 
                     if (match === accept) {
 
-                        let routes = [..._routes];
+                        let _routes = [...routes];
 
-                        for (let i = 0; i < routes.length; i++) {
+                        for (let i = 0; i < _routes.length; i++) {
 
-                            if (Array.isArray(routes[i])) {
-                                routes.splice(i, 1, ...(routes[i] as Array<typeof router>));
+                            if (Array.isArray(_routes[i])) {
+                                _routes.splice(i, 1, ...(_routes[i] as Array<typeof router>));
                             }
 
-                            if (routes[i].hasOwnProperty(_connect)) {
-                                routes[i] = (routes[i] as typeof connect)(...[] as typeof _routes);
+                            if (_routes[i].hasOwnProperty(_connect)) {
+                                _routes[i] = (_routes[i] as typeof connect)(...[] as typeof routes);
                             }
 
-                            if (routes[i].hasOwnProperty(_router)) {
+                            if (_routes[i].hasOwnProperty(_router)) {
 
-                                let match = await (routes[i] as typeof router)(...routeArgs);
+                                let match = await (_routes[i] as typeof router)(...routeArgs);
 
                                 if (match !== deny) {
                                     return match;
                                 }
                             }
                             else {
-                                throw new Error(`Expected a connect, or router.  Encountered a ${routes[i].toString()} instead.`)
+                                throw new Error(`Expected a connect, or router.  Encountered a ${_routes[i].toString()} instead.`)
                             }
                         }
 

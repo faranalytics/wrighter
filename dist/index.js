@@ -8,28 +8,28 @@ const _router = Symbol('router');
 export function createRoute(fn) {
     function route(...args) {
         let closure = fn(...args);
-        function connect(..._routes) {
+        function connect(...routes) {
             async function router(...routeArgs) {
                 if (typeof closure == 'function') {
                     logger.debug(`Calling: ${fn.name}(${[...routeArgs]})`);
                     let match = await closure(...routeArgs);
                     if (match === accept) {
-                        let routes = [..._routes];
-                        for (let i = 0; i < routes.length; i++) {
-                            if (Array.isArray(routes[i])) {
-                                routes.splice(i, 1, ...routes[i]);
+                        let _routes = [...routes];
+                        for (let i = 0; i < _routes.length; i++) {
+                            if (Array.isArray(_routes[i])) {
+                                _routes.splice(i, 1, ..._routes[i]);
                             }
-                            if (routes[i].hasOwnProperty(_connect)) {
-                                routes[i] = routes[i](...[]);
+                            if (_routes[i].hasOwnProperty(_connect)) {
+                                _routes[i] = _routes[i](...[]);
                             }
-                            if (routes[i].hasOwnProperty(_router)) {
-                                let match = await routes[i](...routeArgs);
+                            if (_routes[i].hasOwnProperty(_router)) {
+                                let match = await _routes[i](...routeArgs);
                                 if (match !== deny) {
                                     return match;
                                 }
                             }
                             else {
-                                throw new Error(`Expected a connect, or router.  Encountered a ${routes[i].toString()} instead.`);
+                                throw new Error(`Expected a connect, or router.  Encountered a ${_routes[i].toString()} instead.`);
                             }
                         }
                         return deny;

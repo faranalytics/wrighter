@@ -22,6 +22,6 @@
   },
   "type": "module",
   "dependencies": {
-    "memoir": "^1.0.9"
+    "memoir": "^1.0.10"
   }
 }
