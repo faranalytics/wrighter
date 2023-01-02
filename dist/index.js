@@ -1,5 +1,6 @@
 import { logger } from 'memoir';
 import { accept, deny } from './symbols.js';
+export { logger } from 'memoir';
 export { ACCEPT, DENY, accept, deny } from './symbols.js';
 const _route = Symbol('route');
 const _connect = Symbol('connect');
@@ -10,7 +11,7 @@ export function createRoute(fn) {
         function connect(..._routes) {
             async function router(...routeArgs) {
                 if (typeof closure == 'function') {
-                    logger.debug(`Calling: ${closure.name}(${[...routeArgs]})`);
+                    logger.debug(`Calling: ${fn.name}(${[...routeArgs]})`);
                     let match = await closure(...routeArgs);
                     if (match === accept) {
                         let routes = [..._routes];

@@ -1,6 +1,7 @@
 import { logger } from 'memoir';
 import { ACCEPT, DENY, accept, deny } from './symbols.js';
 
+export { logger } from 'memoir';
 export { ACCEPT, DENY, accept, deny } from './symbols.js';
 
 const _route = Symbol('route');
@@ -19,7 +20,7 @@ export function createRoute<ArgsT extends Array<any>, ReturnT extends (...args: 
 
                 if (typeof closure == 'function') {
 
-                    logger.debug(`Calling: ${closure.name}(${[...routeArgs]})`);
+                    logger.debug(`Calling: ${fn.name}(${[...routeArgs]})`);
 
                     let match = await closure(...routeArgs);
 
