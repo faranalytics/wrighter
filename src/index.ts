@@ -2,7 +2,7 @@ import { logger } from 'memoir';
 import { accept, deny } from './symbols.js';
 
 export { logger } from 'memoir';
-export { ACCEPT, DENY, accept, deny } from './symbols.js';
+export { accept, deny } from './symbols.js';
 
 const _route = Symbol('route');
 const _connect = Symbol('connect');
@@ -14,7 +14,7 @@ export function createRoute<ArgsT extends Array<any>, ReturnT extends (...args: 
 
         let closure: ReturnT = fn(...args);
 
-        function connect(...routes: Array<typeof router | typeof connect | typeof route | Array<typeof router | typeof connect | typeof route>>): ReturnT {
+        function connect(...routes: Array<typeof router | typeof connect | Array<typeof router | typeof connect>>): ReturnT {
 
             async function router(...routeArgs: Array<any>): Promise<any> {
 
@@ -24,7 +24,7 @@ export function createRoute<ArgsT extends Array<any>, ReturnT extends (...args: 
 
                     let match = await closure(...routeArgs);
 
-                    if (match === accept) {
+                    if (match === accept && routes.length > 0) {
 
                         let _routes = [...routes];
 
@@ -53,11 +53,8 @@ export function createRoute<ArgsT extends Array<any>, ReturnT extends (...args: 
 
                         return deny;
                     }
-                    else if (match !== deny) {
-                        return match;
-                    }
 
-                    return deny;
+                    return match;
                 }
             }
 

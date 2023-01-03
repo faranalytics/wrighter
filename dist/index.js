@@ -1,7 +1,7 @@
 import { logger } from 'memoir';
 import { accept, deny } from './symbols.js';
 export { logger } from 'memoir';
-export { ACCEPT, DENY, accept, deny } from './symbols.js';
+export { accept, deny } from './symbols.js';
 const _route = Symbol('route');
 const _connect = Symbol('connect');
 const _router = Symbol('router');
@@ -13,7 +13,7 @@ export function createRoute(fn) {
                 if (typeof closure == 'function') {
                     logger.debug(`Calling: ${fn.name}(${[...routeArgs]})`);
                     let match = await closure(...routeArgs);
-                    if (match === accept) {
+                    if (match === accept && routes.length > 0) {
                         let _routes = [...routes];
                         for (let i = 0; i < _routes.length; i++) {
                             if (Array.isArray(_routes[i])) {
@@ -34,10 +34,7 @@ export function createRoute(fn) {
                         }
                         return deny;
                     }
-                    else if (match !== deny) {
-                        return match;
-                    }
-                    return deny;
+                    return match;
                 }
             }
             return Object.defineProperty(router, _router, {
