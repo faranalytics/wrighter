@@ -8,21 +8,55 @@ const _route = Symbol('route');
 const _connect = Symbol('connect');
 const _router = Symbol('router');
 
+export function createHandler<ArgsT extends Array<any>, ReturnT extends (...args: Array<any>) => Promise<any>>(fn: (...args: ArgsT) => ReturnT) {
+
+    function route(...args: ArgsT): typeof router {
+
+        let matcher: ReturnT = fn(...args);
+
+        async function router(...routeArgs: Array<any>): Promise<any> {
+
+            if (typeof matcher == 'function') {
+
+                logger.debug(`Calling: ${fn.name}(${[...routeArgs]})`);
+
+                let match = await matcher(...routeArgs);
+
+                return match;
+            }
+        }
+
+        return Object.defineProperty(router, _router, {
+            value: null,
+            writable: false,
+            configurable: false
+        }) as ReturnT;
+
+    }
+
+    return Object.defineProperty(route, _route, {
+        value: null,
+        writable: false,
+        configurable: false
+    });
+}
+
+
 export function createRoute<ArgsT extends Array<any>, ReturnT extends (...args: Array<any>) => Promise<any>>(fn: (...args: ArgsT) => ReturnT) {
 
-    function route(...args: ArgsT) {
+    function route(...args: ArgsT): typeof connect {
 
-        let closure: ReturnT = fn(...args);
+        let matcher: ReturnT = fn(...args);
 
-        function connect(...routes: Array<typeof router | typeof connect | Array<typeof router | typeof connect>>): ReturnT {
+        function connect(...routes: Array<typeof router | Array<typeof router>>): ReturnT {
 
             async function router(...routeArgs: Array<any>): Promise<any> {
 
-                if (typeof closure == 'function') {
+                if (typeof matcher == 'function') {
 
                     logger.debug(`Calling: ${fn.name}(${[...routeArgs]})`);
 
-                    let match = await closure(...routeArgs);
+                    let match = await matcher(...routeArgs);
 
                     if (match === accept && routes.length > 0) {
 
@@ -32,10 +66,6 @@ export function createRoute<ArgsT extends Array<any>, ReturnT extends (...args: 
 
                             if (Array.isArray(_routes[i])) {
                                 _routes.splice(i, 1, ...(_routes[i] as Array<typeof router>));
-                            }
-
-                            if (_routes[i].hasOwnProperty(_connect)) {
-                                _routes[i] = (_routes[i] as typeof connect)(...[] as typeof routes);
                             }
 
                             if (_routes[i].hasOwnProperty(_router)) {
