@@ -5,17 +5,18 @@ export { accept, deny } from './symbols.js';
 const _route = Symbol('route');
 const _connect = Symbol('connect');
 const _router = Symbol('router');
+const _handler = Symbol('handler');
 export function createHandler(fn) {
     function route(...args) {
         let matcher = fn(...args);
-        async function router(...routeArgs) {
+        async function handler(...routeArgs) {
             if (typeof matcher == 'function') {
                 logger.debug(`Calling: ${fn.name}(${[...routeArgs]})`);
                 let match = await matcher(...routeArgs);
                 return match;
             }
         }
-        return Object.defineProperty(router, _router, {
+        return Object.defineProperty(handler, _handler, {
             value: null,
             writable: false,
             configurable: false
@@ -41,14 +42,14 @@ export function createRoute(fn) {
                             if (Array.isArray(_routes[i])) {
                                 _routes.splice(i, 1, ..._routes[i]);
                             }
-                            if (_routes[i].hasOwnProperty(_router)) {
+                            if (_routes[i].hasOwnProperty(_router) || _routes[i].hasOwnProperty(_handler)) {
                                 let match = await _routes[i](...routeArgs);
                                 if (match !== deny) {
                                     return match;
                                 }
                             }
                             else {
-                                throw new Error(`Expected a connect, or router.  Encountered a ${_routes[i].toString()} instead.`);
+                                throw new Error(`Expected a router or handler.  Encountered a ${_routes[i].toString()} instead.`);
                             }
                         }
                         return deny;

@@ -1,5 +1,5 @@
 export { logger } from 'memoir';
 export { accept, deny } from './symbols.js';
-export declare function createHandler<ArgsT extends Array<any>, ReturnT extends (...args: Array<any>) => Promise<any>>(fn: (...args: ArgsT) => ReturnT): (...args: ArgsT) => (...routeArgs: Array<any>) => Promise<any>;
-export declare function createRoute<ArgsT extends Array<any>, ReturnT extends (...args: Array<any>) => Promise<any>>(fn: (...args: ArgsT) => ReturnT): (...args: ArgsT) => (...routes: (((...routeArgs: Array<any>) => Promise<any>) | ((...routeArgs: Array<any>) => Promise<any>)[])[]) => ReturnT;
+export declare function createHandler<ArgsT extends Array<any>, HandlerT extends (...args: Array<any>) => Promise<any>>(fn: (...args: ArgsT) => HandlerT): (...args: ArgsT) => HandlerT;
+export declare function createRoute<ArgsT extends Array<any>, RouterT extends (...args: Array<any>) => Promise<any>>(fn: (...args: ArgsT) => RouterT): (...args: ArgsT) => (...routes: Array<RouterT | Array<RouterT>>) => RouterT;
 //# sourceMappingURL=index.d.ts.map
