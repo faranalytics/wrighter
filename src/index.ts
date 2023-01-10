@@ -20,7 +20,7 @@ export function createHandler<ArgsT extends Array<any>, HandlerT extends (...arg
 
             if (typeof matcher == 'function') {
 
-                logger.debug(`Calling: ${fn.name}(${[...routeArgs]})`);
+                logger.debug(`Calling: ${fn.name}(${[...args]})`);
 
                 let match = await matcher(...routeArgs);
 
@@ -55,7 +55,7 @@ export function createRoute<ArgsT extends Array<any>, RouterT extends (...args: 
 
                 if (typeof matcher == 'function') {
 
-                    logger.debug(`Calling: ${fn.name}(${[...routeArgs]})`);
+                    logger.debug(`Calling: ${fn.name}(${[...args]})`);
 
                     let match = await matcher(...routeArgs);
 

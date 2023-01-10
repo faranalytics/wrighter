@@ -11,7 +11,7 @@ export function createHandler(fn) {
         let matcher = fn(...args);
         async function handler(...routeArgs) {
             if (typeof matcher == 'function') {
-                logger.debug(`Calling: ${fn.name}(${[...routeArgs]})`);
+                logger.debug(`Calling: ${fn.name}(${[...args]})`);
                 let match = await matcher(...routeArgs);
                 return match;
             }
@@ -34,7 +34,7 @@ export function createRoute(fn) {
         function connect(...routes) {
             async function router(...routeArgs) {
                 if (typeof matcher == 'function') {
-                    logger.debug(`Calling: ${fn.name}(${[...routeArgs]})`);
+                    logger.debug(`Calling: ${fn.name}(${[...args]})`);
                     let match = await matcher(...routeArgs);
                     if (match === accept && routes.length > 0) {
                         let _routes = [...routes];
