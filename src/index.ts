@@ -1,4 +1,4 @@
-import { logger } from 'memoir';
+import { Level, logger } from 'memoir';
 import { accept, deny } from './symbols.js';
 
 export { logger } from 'memoir';
@@ -9,6 +9,15 @@ const _connect = Symbol('connect');
 const _router = Symbol('router');
 const _handler = Symbol('handler');
 
+function replacer(k: string, v: any) {
+    if (v instanceof RegExp) {
+        return v.toString();
+    }
+    else if (typeof v == 'function') {
+        return v.name;
+    }
+    return v;
+}
 
 export function createHandler<ArgsT extends Array<any>, HandlerT extends (...args: Array<any>) => Promise<any>>(fn: (...args: ArgsT) => HandlerT) {
 
@@ -20,7 +29,9 @@ export function createHandler<ArgsT extends Array<any>, HandlerT extends (...arg
 
             if (typeof matcher == 'function') {
 
-                logger.debug(`Calling: ${fn.name}(${[...args]})`);
+                if (logger.level == Level.DEBUG) {
+                    logger.debug(`Calling: ${fn.name}(${JSON.stringify([...args], replacer).replace(/(?:^\[|\]$)/g, '')})`);
+                }
 
                 let match = await matcher(...routeArgs);
 
@@ -55,7 +66,9 @@ export function createRoute<ArgsT extends Array<any>, RouterT extends (...args: 
 
                 if (typeof matcher == 'function') {
 
-                    logger.debug(`Calling: ${fn.name}(${[...args]})`);
+                    if (logger.level == Level.DEBUG) {
+                        logger.debug(`Calling: ${fn.name}(${JSON.stringify([...args], replacer).replace(/(?:^\[|\]$)/g, '')})`);
+                    }
 
                     let match = await matcher(...routeArgs);
 

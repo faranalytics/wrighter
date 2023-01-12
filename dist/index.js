@@ -1,4 +1,4 @@
-import { logger } from 'memoir';
+import { Level, logger } from 'memoir';
 import { accept, deny } from './symbols.js';
 export { logger } from 'memoir';
 export { accept, deny } from './symbols.js';
@@ -6,12 +6,23 @@ const _route = Symbol('route');
 const _connect = Symbol('connect');
 const _router = Symbol('router');
 const _handler = Symbol('handler');
+function replacer(k, v) {
+    if (v instanceof RegExp) {
+        return v.toString();
+    }
+    else if (typeof v == 'function') {
+        return v.name;
+    }
+    return v;
+}
 export function createHandler(fn) {
     function route(...args) {
         let matcher = fn(...args);
         async function handler(...routeArgs) {
             if (typeof matcher == 'function') {
-                logger.debug(`Calling: ${fn.name}(${[...args]})`);
+                if (logger.level == Level.DEBUG) {
+                    logger.debug(`Calling: ${fn.name}(${JSON.stringify([...args], replacer).replace(/(?:^\[|\]$)/g, '')})`);
+                }
                 let match = await matcher(...routeArgs);
                 return match;
             }
@@ -34,7 +45,9 @@ export function createRoute(fn) {
         function connect(...routes) {
             async function router(...routeArgs) {
                 if (typeof matcher == 'function') {
-                    logger.debug(`Calling: ${fn.name}(${[...args]})`);
+                    if (logger.level == Level.DEBUG) {
+                        logger.debug(`Calling: ${fn.name}(${JSON.stringify([...args], replacer).replace(/(?:^\[|\]$)/g, '')})`);
+                    }
                     let match = await matcher(...routeArgs);
                     if (match === accept && routes.length > 0) {
                         let _routes = [...routes];
