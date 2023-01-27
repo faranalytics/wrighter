@@ -19,11 +19,14 @@ function replacer(k: string, v: any) {
     return v;
 }
 
-export function createHandler<ArgsT extends Array<any>, HandlerT extends (...args: Array<any>) => Promise<any>>(fn: (...args: ArgsT) => HandlerT) {
+export function createHandler<
+    ArgsT extends Array<any>,
+    HandlerT extends (...args: Array<any>) => Promise<any>
+>(fn: (...args: ArgsT) => HandlerT) {
 
     function route(...args: ArgsT): HandlerT {
 
-        let matcher: HandlerT = fn(...args);
+        const matcher: HandlerT = fn(...args);
 
         async function handler(...routeArgs: Array<any>): Promise<any> {
 
@@ -32,11 +35,9 @@ export function createHandler<ArgsT extends Array<any>, HandlerT extends (...arg
                 if (logger.level == Level.DEBUG) {
                     logger.debug(`Calling: ${fn.name}(${JSON.stringify([...args], replacer).replace(/(?:^\[|\]$)/g, '')})`);
                 }
-
-                let match = await matcher(...routeArgs);
-
-                return match;
+                return await matcher(...routeArgs);
             }
+            return deny;
         }
 
         return Object.defineProperty(handler, _handler, {
@@ -54,11 +55,14 @@ export function createHandler<ArgsT extends Array<any>, HandlerT extends (...arg
 }
 
 
-export function createRoute<ArgsT extends Array<any>, RouterT extends (...args: Array<any>) => Promise<any>>(fn: (...args: ArgsT) => RouterT) {
+export function createRoute<
+    ArgsT extends Array<any>,
+    RouterT extends (...args: Array<any>) => Promise<any>
+>(fn: (...args: ArgsT) => RouterT) {
 
     function route(...args: ArgsT): typeof connect {
 
-        let matcher: RouterT = fn(...args);
+        const matcher: RouterT = fn(...args);
 
         function connect(...routes: Array<RouterT | Array<RouterT>>): RouterT {
 
@@ -94,12 +98,11 @@ export function createRoute<ArgsT extends Array<any>, RouterT extends (...args: 
                                 throw new Error(`Expected a router or handler.  Encountered a ${_routes[i].toString()} instead.`)
                             }
                         }
-
                         return deny;
                     }
-
                     return match;
                 }
+                return deny;
             }
 
             return Object.defineProperty(router, _router, {
@@ -125,16 +128,16 @@ export function createRoute<ArgsT extends Array<any>, RouterT extends (...args: 
 
 
 export function createTransformer<
-ArgsT extends Array<any>, 
-RouterT extends (...args: Array<any>) => Promise<any>, 
-TransformT extends (...args: Array<any>) => Promise<any>
->(fn: (...args: ArgsT) => (forward: TransformT, ...args:any)=>Promise<any>) {
+    ArgsT extends Array<any>,
+    RouterT extends (...args: Array<any>) => Promise<any>,
+    TransformerT extends (...args: Array<any>) => Promise<any>
+>(fn: (...args: ArgsT) => (forward: TransformerT, ...args: any) => Promise<any>) {
 
     function route(...args: ArgsT): typeof connect {
 
-        let connector: (forward: TransformT, ...args:any)=>Promise<any>  = fn(...args);
+        const connector: (forward: TransformerT, ...args: any) => Promise<any> = fn(...args);
 
-        function connect(...routes: Array<TransformT | Array<TransformT>>): RouterT {
+        function connect(...routes: Array<TransformerT | Array<TransformerT>>): RouterT {
 
             async function router(...routeArgs: Array<any>): Promise<any> {
 
@@ -153,7 +156,7 @@ TransformT extends (...args: Array<any>) => Promise<any>
                             for (let i = 0; i < _routes.length; i++) {
 
                                 if (Array.isArray(_routes[i])) {
-                                    _routes.splice(i, 1, ...(_routes[i] as Array<TransformT>));
+                                    _routes.splice(i, 1, ...(_routes[i] as Array<TransformerT>));
                                 }
 
                                 if (_routes[i].hasOwnProperty(_router) || _routes[i].hasOwnProperty(_handler)) {
@@ -168,15 +171,14 @@ TransformT extends (...args: Array<any>) => Promise<any>
                                     throw new Error(`Expected a router or handler.  Encountered a ${_routes[i].toString()} instead.`)
                                 }
                             }
-
                             return deny;
                         }
-
                         return deny;
                     }
 
-                    return await connector(forward as TransformT, ...routeArgs);
+                    return await connector(forward as TransformerT, ...routeArgs);
                 }
+                return deny;
             }
 
             return Object.defineProperty(router, _router, {
